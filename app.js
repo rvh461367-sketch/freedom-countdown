@@ -1,0 +1,25 @@
+const DEFAULTS={startDate:"2027-04-01",startCount:892,holidayLength:28,holidayMonth:9,holidayDay:1};
+const $=id=>document.getElementById(id);
+let settings={...DEFAULTS,...JSON.parse(localStorage.getItem("fc-settings")||"{}")};
+let dismissed=JSON.parse(localStorage.getItem("fc-dismissed")||"[]");
+function dateOnly(s){const [y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d,12)}
+function iso(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
+function addDays(d,n){let x=new Date(d);x.setDate(x.getDate()+n);return x}
+function isVacation(d){if(d.getFullYear()<2027||d.getFullYear()>2031)return false;let start=new Date(d.getFullYear(),settings.holidayMonth,settings.holidayDay,12);let end=addDays(start,settings.holidayLength);return d>=start&&d<end}
+function isScheduledWork(d){let start=dateOnly(settings.startDate);let offset=Math.round((d-start)/86400000);return offset>=0&&offset%9<5}
+function isCountedWork(d){return isScheduledWork(d)&&!isVacation(d)}
+function completedBefore(today){let start=dateOnly(settings.startDate);let n=0;for(let d=new Date(start);d<today;d=addDays(d,1))if(isCountedWork(d))n++;return n}
+function rewardFor(n){if(n===800)return ["800 DAYS — THE FIRST TOAST","Your first milestone. Raise a glass to the journey. 🥂"];if(n===700)return ["700 DAYS — A LITTLE LUXURY","You have earned a treat."];if(n===600)return ["600 DAYS — TIME TO UNWIND","Make room for some pampering."];if(n===500)return ["500 DAYS — DINNER IS SERVED","Celebrate with a special meal."];if(n===400)return ["400 DAYS — ESCAPE MODE","A little getaway is calling."];if(n===300)return ["300 DAYS — SOMETHING SPECIAL","Choose a gift for yourself."];if(n===200)return ["200 DAYS — THE FINAL STRETCH","The finish line is getting closer."];if(n===100)return ["100 DAYS — ROTHSCHILD TIME","The champagne milestone. Make it memorable."];if(n===0)return ["FREEDOM!","The countdown is over. Your grand surprise awaits."];return null}
+function render(){let today=new Date();today.setHours(12,0,0,0);let start=dateOnly(settings.startDate);let elapsed=today<start?0:completedBefore(today);let remaining=Math.max(0,settings.startCount-elapsed);
+$("count").textContent=remaining.toLocaleString();let scheduled=isScheduledWork(today),leave=isVacation(today);
+$("status").textContent=today<start?"Countdown begins 1 April 2027":remaining===0?"YOU MADE IT — FREEDOM!":leave?"HOLIDAY MODE — ENJOY YOUR LEAVE":scheduled?"WORK DAY — ONE STEP CLOSER":"REST DAY — ENJOY YOUR FREEDOM";
+$("next").innerHTML=today<start?'First working day: <strong>'+start.toLocaleDateString(undefined,{day:"numeric",month:"long",year:"numeric"})+'</strong>':"Today: <strong>"+today.toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"long"})+"</strong>";
+let done=Math.min(settings.startCount,elapsed),pct=100*done/settings.startCount;$("bar").style.width=pct+"%";$("progressText").textContent=`${done.toLocaleString()} of ${settings.startCount.toLocaleString()} working days completed`;
+let next=remaining>800?800:[700,600,500,400,300,200,100,0].find(x=>remaining>x);if(remaining===0)next=0;
+$("milestone").textContent=next===undefined?"Freedom!":next===0?"FREEDOM":next+" days";$("toMilestone").textContent=next===undefined?"—":Math.max(0,remaining-next)+" working days";
+$("milestones").innerHTML=[800,700,600,500,400,300,200,100,0].map(n=>`<div class="mile ${remaining<=n?"done":""}"><b>${n===0?"ZERO":n}</b>${n===800?"First toast":n===100?"Rothschild":n===0?"Grand finale":"Milestone"}</div>`).join("");
+let crossed=[800,700,600,500,400,300,200,100,0].find(n=>remaining<=n&&remaining>=n-1&&!dismissed.includes(n));let panel=$("celebration");if(crossed!==undefined){let r=rewardFor(crossed);panel.style.display="block";$("celebrationTitle").textContent=r[0];$("celebrationText").textContent=r[1];$("dismiss").onclick=()=>{dismissed.push(crossed);localStorage.setItem("fc-dismissed",JSON.stringify(dismissed));panel.style.display="none"};}else panel.style.display="none";
+}
+function save(){settings.startDate=$("startDate").value||DEFAULTS.startDate;settings.startCount=Math.max(1,Number($("startCount").value)||892);settings.holidayLength=Math.max(7,Number($("holidayLength").value)||28);localStorage.setItem("fc-settings",JSON.stringify(settings));dismissed=[];localStorage.setItem("fc-dismissed","[]");render()}
+$("startDate").value=settings.startDate;$("startCount").value=settings.startCount;$("holidayLength").value=settings.holidayLength;$("save").onclick=save;$("reset").onclick=()=>{settings={...DEFAULTS};localStorage.setItem("fc-settings",JSON.stringify(settings));dismissed=[];localStorage.setItem("fc-dismissed","[]");$("startDate").value=settings.startDate;$("startCount").value=settings.startCount;$("holidayLength").value=settings.holidayLength;render()};
+render();if("serviceWorker"in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));

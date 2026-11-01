@@ -1,0 +1,17 @@
+{
+  "name": "The Freedom Countdown",
+  "short_name": "Freedom",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#101010",
+  "theme_color": "#101010",
+  "description": "A personal 5-on/4-off working-day countdown.",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
